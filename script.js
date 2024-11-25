@@ -1,37 +1,37 @@
 // 初始化变量
-let   让 ws; // WebSocket 实例
-let   让 serverIp = prompt   提示("请输入接收数据的服务器 IP（例如：192.168.1.100）");
+let ws; // WebSocket 实例
+let serverIp = prompt("请输入接收数据的服务器 IP（例如：192.168.1.100）");
 
-if   如果 (!serverIp) {
-    alert   警报("未输入 IP 地址，无法发送数据！");
-} else   其他的 {
+if (!serverIp) {
+    alert("未输入 IP 地址，无法发送数据！");
+} else {
     // 初始化 WebSocket 连接
-    const   常量 wsUrl = `ws://   “ws: / /${serverIp}:8080`; // 假设服务器监听 8080 端口
-    ws = new   新 WebSocket(wsUrl);
+    const wsUrl = `ws://${serverIp}:8080`; // 假设服务器监听 8080 端口
+    ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-        console.log   日志("WebSocket 连接成功");
+        console.log("WebSocket 连接成功");
     };
 
-    ws.onerror = (error   错误) => {
-        console.error   错误("WebSocket 连接错误：", error);
+    ws.onerror = (error) => {
+        console.error("WebSocket 连接错误：", error);
     };
 
     ws.onclose = () => {
-        console.log   日志("WebSocket 连接关闭");
+        console.log("WebSocket 连接关闭");
     };
 }
 
 // 检查浏览器是否支持设备传感器功能
-if   如果 (window.DeviceOrientationEvent && window.DeviceMotionEvent) {
+if (window.DeviceOrientationEvent && window.DeviceMotionEvent) {
     // 请求权限（针对 iOS 设备）
-    if   如果 (typeof DeviceMotionEvent.requestPermission === "function") {
+    if (typeof DeviceMotionEvent.requestPermission === "function") {
         DeviceMotionEvent.requestPermission()
             .then(permissionState => {
-                if   如果 (permissionState === "granted") {
+                if (permissionState === "granted") {
                     setupListeners();
-                } else   其他的 {
-                    alert   警报("权限被拒绝，无法读取设备传感器数据！");
+                } else {
+                    alert("权限被拒绝，无法读取设备传感器数据！");
                 }
             })
             .catch(console.error);
