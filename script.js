@@ -1,34 +1,45 @@
 // script.js
 
 let ws; // WebSocket 实例
-let serverIp = prompt("请输入接收数据的服务器 IP（例如：http://192.168.1.100:5000）");
 
-// 如果没有输入 IP 地址，则提示并停止执行
-if (!serverIp) {
-    alert("未输入 IP 地址，无法发送数据！");
+// 让用户输入完整的服务器 URL（包括 IP 地址和端口）
+let serverUrl = prompt("请输入接收数据的服务器 URL（例如：http://192.168.1.100:5000）");
+
+// 如果没有输入 URL 地址，则提示并停止执行
+if (!serverUrl) {
+    alert("未输入服务器 URL，无法发送数据！");
 } else {
-    const wsUrl = `ws://${serverIp.replace(/^http:\/\//, '')}:5000`; // 去掉 http:// 并指定端口号
+    // 提取出 IP 地址和端口信息
+    let urlPattern = /^http:\/\/([\w\.-]+):(\d+)$/;
+    let match = serverUrl.match(urlPattern);
+    if (match) {
+        let serverIp = match[1];  // 提取服务器 IP
+        let port = match[2];      // 提取端口号
+        const wsUrl = `ws://${serverIp}:${port}`; // 生成 WebSocket URL
 
-    // 初始化 WebSocket 连接
-    ws = new WebSocket(wsUrl);
+        // 初始化 WebSocket 连接
+        ws = new WebSocket(wsUrl);
 
-    // WebSocket 连接成功时的处理
-    ws.onopen = () => {
-        console.log("WebSocket 连接成功");
-        displayErrorMessage("");  // 清除错误消息
-    };
+        // WebSocket 连接成功时的回调
+        ws.onopen = () => {
+            console.log("WebSocket 连接成功");
+            displayErrorMessage(""); // 清除任何之前的错误信息
+        };
 
-    // WebSocket 错误处理
-    ws.onerror = (error) => {
-        console.error("WebSocket 连接错误：", error);
-        displayErrorMessage("WebSocket 连接错误，请检查 IP 地址和服务器状态！");
-    };
+        // WebSocket 错误处理
+        ws.onerror = (error) => {
+            console.error("WebSocket 连接错误：", error);
+            displayErrorMessage("WebSocket 连接错误，请检查 URL 和服务器状态！");
+        };
 
-    // WebSocket 关闭时的处理
-    ws.onclose = () => {
-        console.log("WebSocket 连接关闭");
-        displayErrorMessage("WebSocket 连接已关闭！");
-    };
+        // WebSocket 关闭时的回调
+        ws.onclose = () => {
+            console.log("WebSocket 连接关闭");
+            displayErrorMessage("WebSocket 连接已关闭！");
+        };
+    } else {
+        alert("服务器 URL 格式不正确，请按 http://ip:port 的格式输入！");
+    }
 }
 
 // 设备传感器数据监听
@@ -62,8 +73,10 @@ function setupListeners() {
         document.getElementById("gyro").textContent = gyroData;
 
         if (ws && ws.readyState === WebSocket.OPEN) {
+            console.log("发送陀螺仪数据");
             ws.send(JSON.stringify({ type: "gyro", alpha, beta, gamma }));
         } else {
+            console.log("WebSocket 未连接，无法发送陀螺仪数据");
             displayErrorMessage("WebSocket 未连接，无法发送陀螺仪数据！");
         }
     });
@@ -78,8 +91,10 @@ function setupListeners() {
         document.getElementById("accel").textContent = accelData;
 
         if (ws && ws.readyState === WebSocket.OPEN) {
+            console.log("发送加速度计数据");
             ws.send(JSON.stringify({ type: "accel", x, y, z }));
         } else {
+            console.log("WebSocket 未连接，无法发送加速度计数据");
             displayErrorMessage("WebSocket 未连接，无法发送加速度计数据！");
         }
     });
@@ -91,5 +106,5 @@ function displayErrorMessage(message) {
     const errorTextElement = document.getElementById("error-text");
 
     errorTextElement.textContent = message;
-    errorMessageElement.style.display = message ? "block" : "none";
+    errorMessageElement.style.display = message ? "block" : "none"; // 只有在有错误时才显示
 }
