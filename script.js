@@ -1,30 +1,37 @@
-// 初始化变量
+// script.js
+
 let ws; // WebSocket 实例
 let serverIp = prompt("请输入接收数据的服务器 IP（例如：192.168.1.100）");
 
+// 如果没有输入 IP 地址，则提示并停止执行
 if (!serverIp) {
     alert("未输入 IP 地址，无法发送数据！");
 } else {
+    const wsUrl = `ws://${serverIp}:8080`; // 连接到 WebSocket 服务器的 URL
+
     // 初始化 WebSocket 连接
-    const wsUrl = `ws://${serverIp}:8080`; // 假设服务器监听 8080 端口
     ws = new WebSocket(wsUrl);
 
+    // 连接成功
     ws.onopen = () => {
         console.log("WebSocket 连接成功");
     };
 
+    // WebSocket 错误处理
     ws.onerror = (error) => {
         console.error("WebSocket 连接错误：", error);
+        displayErrorMessage("WebSocket 连接错误，请检查 IP 地址和服务器状态！");
     };
 
+    // WebSocket 关闭
     ws.onclose = () => {
         console.log("WebSocket 连接关闭");
+        displayErrorMessage("WebSocket 连接已关闭！");
     };
 }
 
-// 检查浏览器是否支持设备传感器功能
+// 设备传感器数据监听
 if (window.DeviceOrientationEvent && window.DeviceMotionEvent) {
-    // 请求权限（针对 iOS 设备）
     if (typeof DeviceMotionEvent.requestPermission === "function") {
         DeviceMotionEvent.requestPermission()
             .then(permissionState => {
@@ -36,7 +43,6 @@ if (window.DeviceOrientationEvent && window.DeviceMotionEvent) {
             })
             .catch(console.error);
     } else {
-        // 不需要权限，直接添加监听器
         setupListeners();
     }
 } else {
@@ -54,9 +60,10 @@ function setupListeners() {
         const gyroData = `α: ${alpha}°, β: ${beta}°, γ: ${gamma}°`;
         document.getElementById("gyro").textContent = gyroData;
 
-        // 发送数据到 WebSocket 服务器
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: "gyro", alpha, beta, gamma }));
+        } else {
+            displayErrorMessage("WebSocket 未连接，无法发送陀螺仪数据！");
         }
     });
 
@@ -69,9 +76,19 @@ function setupListeners() {
         const accelData = `X: ${x} m/s², Y: ${y} m/s², Z: ${z} m/s²`;
         document.getElementById("accel").textContent = accelData;
 
-        // 发送数据到 WebSocket 服务器
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: "accel", x, y, z }));
+        } else {
+            displayErrorMessage("WebSocket 未连接，无法发送加速度计数据！");
         }
     });
+}
+
+// 显示错误信息
+function displayErrorMessage(message) {
+    const errorMessageElement = document.getElementById("error-message");
+    const errorTextElement = document.getElementById("error-text");
+
+    errorTextElement.textContent = message;
+    errorMessageElement.style.display = "block";
 }
