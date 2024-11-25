@@ -1,25 +1,21 @@
 // script.js
 
 let ws; // WebSocket 实例
-let serverUrl = prompt("请输入接收数据的服务器 URL（例如：http://192.168.1.100:5000）");
+let serverIp = prompt("请输入接收数据的服务器 IP（例如：http://192.168.1.100:5000）");
 
-// 如果没有输入 URL 地址，则提示并停止执行
-if (!serverUrl) {
-    alert("未输入服务器 URL，无法发送数据！");
+// 如果没有输入 IP 地址，则提示并停止执行
+if (!serverIp) {
+    alert("未输入 IP 地址，无法发送数据！");
 } else {
-    // 使用 URL 对象解析用户输入的 URL，提取服务器的 IP 和端口
-    let url = new URL(serverUrl); // 解析 URL
-    let serverIp = url.hostname; // 获取 IP 地址
-    let serverPort = url.port || "8080"; // 获取端口，默认使用 8080，如果没有指定端口
-
-    const wsUrl = `ws://${serverIp}:${serverPort}`; // 连接到 WebSocket 服务器的 URL
+    const wsUrl = `ws://${serverIp.replace(/^http:\/\//, '')}:5000`; // 去掉 http:// 并指定端口号
 
     // 初始化 WebSocket 连接
     ws = new WebSocket(wsUrl);
 
-    // WebSocket 连接成功
+    // WebSocket 连接成功时的处理
     ws.onopen = () => {
         console.log("WebSocket 连接成功");
+        displayErrorMessage("");  // 清除错误消息
     };
 
     // WebSocket 错误处理
@@ -28,7 +24,7 @@ if (!serverUrl) {
         displayErrorMessage("WebSocket 连接错误，请检查 IP 地址和服务器状态！");
     };
 
-    // WebSocket 关闭
+    // WebSocket 关闭时的处理
     ws.onclose = () => {
         console.log("WebSocket 连接关闭");
         displayErrorMessage("WebSocket 连接已关闭！");
@@ -95,5 +91,5 @@ function displayErrorMessage(message) {
     const errorTextElement = document.getElementById("error-text");
 
     errorTextElement.textContent = message;
-    errorMessageElement.style.display = "block";
+    errorMessageElement.style.display = message ? "block" : "none";
 }
