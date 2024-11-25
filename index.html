@@ -1,27 +1,76 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>   <！DOCTYPE html   超文本标记语言 >
+<html lang   朗="en"   " ' ">
 <head>
-  <meta charset="UTF-8">
-  <meta name   名字="viewport" content   内容="width=device-width, initial-scale=1.0">
-  <title>传感器数据实时发送</title>
+  <meta charset   字符集="UTF-8"   “utf - 8”>
+  <meta name   名字="viewport"   “视口” content   内容="width=device-width, initial-scale=1.0"“宽度=设备宽度,初始= 1.0”>
+  <title>传感器数据实时获取</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
+      font-family   字体类型: Arial, sans-serif;
+      margin: 20px;
       line-height: 1.6;
     }
-    .data {
-      margin-top: 20px;
-      font-size: 18px;
+    .data-block {
+      margin-bottom: 20px;
+    }
+    .error {
+      color: red;
     }
   </style>
 </head>
 <body>
   <h1>实时传感器数据</h1>
-  <p>陀螺仪数据：</p>
-  <div id="gyroData" class   类="data">正在获取...</div>
-  <p>加速度计数据：</p>
-  <div id="accelData" class   类="data">正在获取...</div>
-  <script src="./script.js"></script>
-</body>
+  <div class   类="data-block">
+    <h2>陀螺仪数据：</h2>
+    <p id="gyroData">正在获取...</p>
+  </div>
+  <div class   类="data-block">
+    <h2>加速度计数据：</h2>
+    <p id="accelData">正在获取...</p>
+  </div>
+  <div class="data-block error" id="errorLog"></div>
+
+  <script>
+    // 支持性检测
+    const gyroDataElement = document.getElementById('gyroData');
+    const accelDataElement = document.getElementById('accelData');
+    const errorLogElement = document.getElementById('errorLog');
+
+    // 初始化错误日志
+    const logError = (message) => {
+      console.error(message);
+      errorLogElement.textContent = message;
+    };
+
+    if (!window.DeviceOrientationEvent) {
+      logError("设备不支持陀螺仪功能");
+    } else if (!window.DeviceMotionEvent) {
+      logError("设备不支持加速度计功能");
+    } else {
+      // 获取陀螺仪数据
+      window.addEventListener('deviceorientation', (event) => {
+        if (event.alpha !== null && event.beta !== null && event.gamma !== null) {
+          gyroDataElement.textContent = `α: ${event.alpha.toFixed(2)}°, β: ${event.beta.toFixed(2)}°, γ: ${event.gamma.toFixed(2)}°`;
+        } else {
+          gyroDataElement.textContent = "无法获取陀螺仪数据，可能是权限问题";
+        }
+      });
+
+      // 获取加速度计数据
+      window.addEventListener('devicemotion', (event) => {
+        const accel = event.accelerationIncludingGravity;
+        if (accel.x !== null && accel.y !== null && accel.z !== null) {
+          accelDataElement.textContent = `X: ${accel.x.toFixed(2)} m/s², Y: ${accel.y.toFixed(2)} m/s², Z: ${accel.z.toFixed(2)} m/s²`;
+        } else {
+          accelDataElement.textContent = "无法获取加速度计数据，可能是权限问题";
+        }
+      });
+    }
+
+    // 捕获未处理的错误
+    window.addEventListener("error", (event) => {
+      logError(`发生错误: ${event.message}`);
+    });
+  </script>
+</body>   身体< / >
 </html>
