@@ -1,115 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>实时传感器数据</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      line-height: 1.6;
-    }
-    .data-block {
-      margin-bottom: 20px;
-    }
-    .error {
-      color: red;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时传感器数据</title>
 </head>
 <body>
-  <h1>实时传感器数据</h1>
-  <div class="data-block">
-    <h2>陀螺仪数据：</h2>
-    <p id="gyroData">正在获取...</p>
-  </div>
-  <div class="data-block">
-    <h2>加速度计数据：</h2>
-    <p id="accelData">正在获取...</p>
-  </div>
-  <div class="data-block error" id="errorLog"></div>
+    <h1>实时传感器数据</h1>
+    <p><strong>陀螺仪数据：</strong></p>
+    <p id="gyro">正在获取...</p>
 
-  <script>
-    const gyroDataElement = document.getElementById('gyroData');
-    const accelDataElement = document.getElementById('accelData');
-    const errorLogElement = document.getElementById('errorLog');
-    let serverUrl = '';
+    <p><strong>加速度计数据：</strong></p>
+    <p id="accel">正在获取...</p>
 
-    // 提示用户输入 IP 地址
-    const promptForServerIP = () => {
-      const ip = prompt("请输入接收数据的电脑 IP 地址（例如：http://192.168.0.101:5000）：");
-      if (ip && ip.startsWith("http")) {
-        serverUrl = ip;
-        console.log(`目标服务器 IP 设置为: ${serverUrl}`);
-      } else {
-        alert("请输入有效的 IP 地址，格式为：http://<IP>:<PORT>");
-        promptForServerIP();
-      }
-    };
+    <div id="error-message" style="color: red; display: none;">
+        <strong>错误：</strong><span id="error-text"></span>
+    </div>
 
-    // 支持性检测
-    const logError = (message) => {
-      console.error(message);
-      errorLogElement.textContent = message;
-    };
+    <script>
+        // 初始化 WebSocket 和服务器 IP
+        let ws;
+        let serverIp = prompt("请输入接收数据的服务器 IP（例如：192.168.1.100）");
 
-    if (!window.DeviceOrientationEvent) {
-      logError("设备不支持陀螺仪功能");
-    } else if (!window.DeviceMotionEvent) {
-      logError("设备不支持加速度计功能");
-    } else {
-      // 获取陀螺仪数据
-      window.addEventListener('deviceorientation', (event) => {
-        if (event.alpha !== null && event.beta !== null && event.gamma !== null) {
-          const gyroData = `α: ${event.alpha.toFixed(2)}°, β: ${event.beta.toFixed(2)}°, γ: ${event.gamma.toFixed(2)}°`;
-          gyroDataElement.textContent = gyroData;
-          sendToServer({ type: "gyro", data: { alpha: event.alpha, beta: event.beta, gamma: event.gamma } });
+        // 如果没有输入 IP 地址，则提示并停止执行
+        if (!serverIp) {
+            alert("未输入 IP 地址，无法发送数据！");
         } else {
-          gyroDataElement.textContent = "无法获取陀螺仪数据，可能是权限问题";
-        }
-      });
+            const wsUrl = `ws://${serverIp}:8080`; // 连接到 WebSocket 服务器的 URL
 
-      // 获取加速度计数据
-      window.addEventListener('devicemotion', (event) => {
-        const accel = event.accelerationIncludingGravity;
-        if (accel.x !== null && accel.y !== null && accel.z !== null) {
-          const accelData = `X: ${accel.x.toFixed(2)} m/s², Y: ${accel.y.toFixed(2)} m/s², Z: ${accel.z.toFixed(2)} m/s²`;
-          accelDataElement.textContent = accelData;
-          sendToServer({ type: "accel", data: { x: accel.x, y: accel.y, z: accel.z } });
+            // 初始化 WebSocket 连接
+            ws = new WebSocket(wsUrl);
+
+            // 连接成功
+            ws.onopen = () => {
+                console.log("WebSocket 连接成功");
+            };
+
+            // WebSocket 错误处理
+            ws.onerror = (error) => {
+                console.error("WebSocket 连接错误：", error);
+                displayErrorMessage("WebSocket 连接错误，请检查 IP 地址和服务器状态！");
+            };
+
+            // WebSocket 关闭
+            ws.onclose = () => {
+                console.log("WebSocket 连接关闭");
+                displayErrorMessage("WebSocket 连接已关闭！");
+            };
+        }
+
+        // 设备传感器数据监听
+        if (window.DeviceOrientationEvent && window.DeviceMotionEvent) {
+            if (typeof DeviceMotionEvent.requestPermission === "function") {
+                DeviceMotionEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === "granted") {
+                            setupListeners();
+                        } else {
+                            alert("权限被拒绝，无法读取设备传感器数据！");
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                setupListeners();
+            }
         } else {
-          accelDataElement.textContent = "无法获取加速度计数据，可能是权限问题";
+            alert("你的设备或浏览器不支持设备传感器功能！");
         }
-      });
-    }
 
-    // 将数据发送到服务器
-    const sendToServer = (payload) => {
-      if (!serverUrl) return; // 如果没有设置服务器地址，则不发送数据
-      fetch(serverUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error(`服务器返回错误状态：${response.status}`);
-          }
-        })
-        .catch((error) => {
-          logError(`数据发送失败: ${error.message}`);
-        });
-    };
+        // 设置传感器监听
+        function setupListeners() {
+            // 监听陀螺仪数据
+            window.addEventListener("deviceorientation", (event) => {
+                const alpha = event.alpha ? event.alpha.toFixed(2) : 0;
+                const beta = event.beta ? event.beta.toFixed(2) : 0;
+                const gamma = event.gamma ? event.gamma.toFixed(2) : 0;
 
-    // 页面加载时提示输入服务器 IP
-    promptForServerIP();
+                const gyroData = `α: ${alpha}°, β: ${beta}°, γ: ${gamma}°`;
+                document.getElementById("gyro").textContent = gyroData;
 
-    // 捕获未处理的错误
-    window.addEventListener("error", (event) => {
-      logError(`发生错误: ${event.message}`);
-    });
-  </script>
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: "gyro", alpha, beta, gamma }));
+                } else {
+                    displayErrorMessage("WebSocket 未连接，无法发送陀螺仪数据！");
+                }
+            });
+
+            // 监听加速度计数据
+            window.addEventListener("devicemotion", (event) => {
+                const x = event.acceleration.x ? event.acceleration.x.toFixed(2) : 0;
+                const y = event.acceleration.y ? event.acceleration.y.toFixed(2) : 0;
+                const z = event.acceleration.z ? event.acceleration.z.toFixed(2) : 0;
+
+                const accelData = `X: ${x} m/s², Y: ${y} m/s², Z: ${z} m/s²`;
+                document.getElementById("accel").textContent = accelData;
+
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: "accel", x, y, z }));
+                } else {
+                    displayErrorMessage("WebSocket 未连接，无法发送加速度计数据！");
+                }
+            });
+        }
+
+        // 显示错误信息
+        function displayErrorMessage(message) {
+            const errorMessageElement = document.getElementById("error-message");
+            const errorTextElement = document.getElementById("error-text");
+
+            errorTextElement.textContent = message;
+            errorMessageElement.style.display = "block";
+        }
+    </script>
 </body>
 </html>
